@@ -12,15 +12,20 @@ import { BiReset } from "react-icons/bi";
 import formatNumber from "~/helpers/numberHelper";
 import { nanoid } from "nanoid";
 import csv from "csvtojson";
+import Pusher from "pusher-js";
+import { env } from "~/env.mjs";
 
 import type { SubmitHandler } from "react-hook-form";
 import type { RouterOutputs } from "~/utils/api";
 import type { NextPage } from "next";
-import useGetProgress from "~/hooks/useGetProgress";
 type SubmitProperties = {
   url: string;
 };
 type ExportedData = RouterOutputs["scraper"]["scrapePictoremGallery"];
+
+const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+  cluster: "us2",
+});
 
 function descriptionFixer(str: string) {
   // gets rid of all whitespace, and then puts spaces between words
@@ -151,7 +156,11 @@ const Home: NextPage = () => {
   });
   
   // this is for retrieving the progress on the server
-  useGetProgress({jobId, scrapePending, setProgress, setMaxProgress});
+  const channel = pusher.subscribe(jobId);
+  channel.bind("jobProgress", (data: {progress: number, maxProgress: number}) => {
+    setProgress(data.progress);
+    setMaxProgress(data.maxProgress);
+  });
 
   const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {

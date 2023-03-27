@@ -7,44 +7,26 @@ import {
 import scrapePictorem from "~/server/ServerFunctions/scrapePictorem";
 import { createJob, deleteJob } from "~/server/ServerFunctions/jobsHandler";
 
-import { observable } from "@trpc/server/observable";
-
 import type { ScrapeResult } from "~/types";
-import EventEmitter from "events";
-
-const ee = new EventEmitter();
+import { jobPusher } from "~/utils/pusher";
 
 export const updateJobEvent = (jobId: string, progress: number, maxProgress: number) => {
-  ee.emit(jobId, {
+  // free trial of pusher gets 200,000 messages a day
+  // Only continue below every 5% of progress
+  // make sure we get the last bit of progress though
+  if (progress % Math.floor(maxProgress / 20) !== 0 && progress !== maxProgress) {
+    return;
+  }
+
+  jobPusher.trigger(jobId, "jobProgress", {
     progress,
     maxProgress,
-  });
+  }).then(() => {
+    console.log("Pusher event sent.");
+  }).catch(console.error);
 };
 
 export const scraperRouter = createTRPCRouter({
-
-  getProgress: publicProcedure
-    .input(z.object({
-      jobId: z.string(),
-    }))
-    .subscription(( { input } ) => {
-      type Data = { progress: number; maxProgress: number };
-      const { jobId } = input;
-
-      return observable<Data>((emit) => {
-        const onAdd = (data: Data) => {
-          // emit data to client
-          emit.next(data);
-        };
-        // trigger `onAdd()` when a new job is added
-        ee.on(jobId, onAdd);
-        // unsubscribe function when client disconnects or stops subscribing
-        return () => {
-          ee.off(jobId, onAdd);
-        };
-      });
-    }),
-
   scrapePictoremGallery: publicProcedure
     .input(z.object({ 
       url: z.string().url(),
