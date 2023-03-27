@@ -10,6 +10,7 @@ import { BsCloudDownloadFill } from "react-icons/bs";
 import { FaGitkraken } from "react-icons/fa";
 import { BiReset } from "react-icons/bi";
 import formatNumber from "~/helpers/numberHelper";
+import { nanoid } from "nanoid";
 import csv from "csvtojson";
 
 import type { SubmitHandler } from "react-hook-form";
@@ -99,12 +100,31 @@ const getFileSize = (totalImages: number) => {
   }
   return `${(size / 1000000).toFixed(2)} GB`;
 };
+const secondsToHms = (d: number) => {
+  if (d < 60) {
+    return `${d} seconds`;
+  }
+
+  if (d >= 60 && d < 3600) {
+    return `${Math.floor(d / 60)} minutes`;
+  }
+
+  if (d >= 3600) {
+    return `${Math.floor(d / 3600)} hours`;
+  }
+};
+const generateJobId = () => {
+  return nanoid(15);
+};
 
 const Home: NextPage = () => {
   const [url, setUrl] = useState<string>("");
   const [startTime, setStartTime] = useState<number>(0);
   const [timeTook, setTimeTook] = useState<number>(0);
   const [jsonData, setJsonData] = useState<string>("");
+  const [progress, setProgress] = useState<number>(0);
+  const [maxProgress, setMaxProgress] = useState<number>(0);
+  const [jobId, setJobId] = useState<string>("");
   const [data, setData] = useState<ExportedData>({
     data: [],
     pages: 0,
@@ -128,13 +148,28 @@ const Home: NextPage = () => {
       }
     }
   });
+  
+  // this is for retrieving the progress on the server
+  api.scraper.getProgress.useQuery({jobId}, {
+    enabled: isLoading,
+    refetchInterval: 500,
+    onSuccess: (data) => {
+      setProgress(data.progress);
+      setMaxProgress(data.maxProgress);
+    }
+  });
+
   const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {
     // start the timer
     const start = Date.now();
     setStartTime(start);
     setUrl(data.url);
-    scrape({url: data.url});
+
+    const generatedId = generateJobId();
+    const generatedJobId = `${generatedId}`;
+    setJobId(generatedJobId);
+    scrape({url: data.url, jobId: generatedJobId});
   };
   const reset = () => {
     setUrl("");
@@ -144,6 +179,8 @@ const Home: NextPage = () => {
     });
     setValue("url", "");
     setError("url", { type: "manual", message: "" });
+    setProgress(0);
+    setMaxProgress(0);
   };
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -178,7 +215,13 @@ const Home: NextPage = () => {
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 max-w-screen-7xl">
           <div className="flex flex-col items-center gap-4">
             <p className="text-3xl font-extrabold tracking-tight text-white sm:text-[4rem]">
-              Pictorem Scraper
+              <motion.span
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0 }}
+              >
+                Pictorem Scraper
+              </motion.span>
             </p>
           </div>
           <div className="justify-center w-full">
@@ -197,7 +240,9 @@ const Home: NextPage = () => {
                   htmlFor="url"
                   className="block text-xs font-medium text-white"
                 >
-                  (e.g. https://pictorem.com/gallery/username)
+                  (e.g. https://pictorem.com/gallery/username) 
+                  (e.g https://pictorem.com/profile/username)
+                  (e.g https://pictorem.com/gallery?records=1)
                 </label>
                 <label
                   htmlFor="url"
@@ -230,6 +275,12 @@ const Home: NextPage = () => {
                   className="input input-bordsered w-full max-w-xl" 
                 />
               </div>
+
+              {progress > 0 && progress < 100 &&
+                <p className="text-white text-center">
+                  {progress} items scraped out of {maxProgress} items
+                </p>  
+              }
 
               <div className="flex flex-row justify-center gap-4 w-full">
                 <motion.div
@@ -286,7 +337,7 @@ const Home: NextPage = () => {
                     {`File size: ${getFileSize(getTotalImages(data))}`}
                   </p>
                   <p>
-                    Scraped {data.pages} page{data.pages > 1 ? "s" : ""}, took {timeTook} s
+                    Scraped {data.pages} page{data.pages > 1 ? "s" : ""}, operation took {secondsToHms(timeTook)}.
                   </p>
                 </div>
 
@@ -329,7 +380,7 @@ const Home: NextPage = () => {
                 fontSize={25}
                 className="mr-2"
               />
-                Reset file
+                Clear data
             </button>
           </form>
 

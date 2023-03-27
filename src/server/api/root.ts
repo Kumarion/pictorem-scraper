@@ -1,5 +1,4 @@
 import { createTRPCRouter } from "~/server/api/trpc";
-import { exampleRouter } from "~/server/api/routers/example";
 import { scraperRouter } from "~/server/api/routers/scraper";
 
 /**
@@ -8,7 +7,6 @@ import { scraperRouter } from "~/server/api/routers/scraper";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  example: exampleRouter,
   scraper: scraperRouter,
 });
 

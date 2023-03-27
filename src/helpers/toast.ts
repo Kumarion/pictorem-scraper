@@ -11,7 +11,7 @@ const ToastHandler = (t: string, type: "success" | "error") => {
     pauseOnHover: true,
     draggable: true,
     progress: undefined,
-    delay: 0,
+    delay: 1,
     theme: "dark",
   } as ToastOptions;
 

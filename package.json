@@ -23,6 +23,7 @@
     "date-fns": "^2.29.3",
     "export-to-csv": "^0.2.1",
     "framer-motion": "^10.9.1",
+    "nanoid": "^3.3.6",
     "next": "^13.2.4",
     "next-auth": "^4.20.1",
     "node-fetch": "^3.3.1",
