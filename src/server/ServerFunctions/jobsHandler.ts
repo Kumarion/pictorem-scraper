@@ -7,6 +7,8 @@ const jobs = new Map() as Map<
     url: string;
   }
 >;
+
+import { updateJobEvent } from "../api/routers/scraper";
   
 const fetchJob = (jobId: string) => {
   // fetch job index of jobId
@@ -22,6 +24,9 @@ const updateJob = (jobId: string, progress: number, maxProgress: number) => {
     maxProgress,
     url: jobs.get(jobId)?.url as string,
   });
+
+  // emit the event to the client
+  updateJobEvent(jobId, progress, maxProgress);
 };
 
 const deleteJob = (jobId: string) => {

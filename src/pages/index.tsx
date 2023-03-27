@@ -16,6 +16,7 @@ import csv from "csvtojson";
 import type { SubmitHandler } from "react-hook-form";
 import type { RouterOutputs } from "~/utils/api";
 import type { NextPage } from "next";
+import useGetProgress from "~/hooks/useGetProgress";
 type SubmitProperties = {
   url: string;
 };
@@ -131,7 +132,7 @@ const Home: NextPage = () => {
   });
 
   // use scraper query
-  const { isLoading, mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
+  const { isLoading: scrapePending, mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
     onSuccess: (data) => {
       setData(data);
       setUrl("");
@@ -150,14 +151,7 @@ const Home: NextPage = () => {
   });
   
   // this is for retrieving the progress on the server
-  api.scraper.getProgress.useQuery({jobId}, {
-    enabled: isLoading,
-    refetchInterval: 500,
-    onSuccess: (data) => {
-      setProgress(data.progress);
-      setMaxProgress(data.maxProgress);
-    }
-  });
+  useGetProgress({jobId, scrapePending, setProgress, setMaxProgress});
 
   const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {
@@ -276,7 +270,7 @@ const Home: NextPage = () => {
                 />
               </div>
 
-              {progress > 0 && progress < 100 &&
+              {progress > 0 &&
                 <p className="text-white text-center">
                   {progress} items scraped out of {maxProgress} items
                 </p>  
@@ -290,15 +284,15 @@ const Home: NextPage = () => {
                 >
                   <button
                     type="submit"
-                    className={`btn btn-primary btn-lg` + `${isLoading && url != "" ? " loading" : ""}`}
-                    disabled={isLoading}
+                    className={`btn btn-primary btn-lg` + `${scrapePending && url != "" ? " loading" : ""}`}
+                    disabled={scrapePending}
                   >
-                    {!isLoading && 
+                    {!scrapePending && 
                     <FaGitkraken 
                       fontSize={25} 
                       className="mr-2" 
                     />}
-                    {isLoading && url != "" ? "Working..." : "Scrape"}
+                    {scrapePending && url != "" ? "Working..." : "Scrape"}
                   </button>
                 </motion.div>
                 

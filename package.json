@@ -7,6 +7,7 @@
     "dev": "next dev",
     "postinstall": "prisma generate",
     "lint": "next lint",
+    "dev:wss": "cross-env PORT=3001 DATABASE_URL=file:./db.sqlite NEXTAUTH_URL=http://localhost:3000 DISCORD_CLIENT_ID= DISCORD_CLIENT_SECRET= NODE_ENV=development WS_URL=ws://localhost:3001 tsx watch src/server/wssDevServer.ts --tsconfig tsconfig.server.json ",
     "start": "next start"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "react-icons": "^4.8.0",
     "react-toastify": "^9.1.2",
     "superjson": "1.12.2",
+    "ws": "^8.13.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {
@@ -41,6 +43,7 @@
     "@types/prettier": "^2.7.2",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.11",
+    "@types/ws": "^8.5.4",
     "@typescript-eslint/eslint-plugin": "^5.56.0",
     "@typescript-eslint/parser": "^5.56.0",
     "autoprefixer": "^10.4.14",

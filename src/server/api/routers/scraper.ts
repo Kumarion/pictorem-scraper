@@ -5,33 +5,44 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import scrapePictorem from "~/server/ServerFunctions/scrapePictorem";
-import { createJob, deleteJob, fetchJob } from "~/server/ServerFunctions/jobsHandler";
+import { createJob, deleteJob } from "~/server/ServerFunctions/jobsHandler";
+
+import { observable } from "@trpc/server/observable";
 
 import type { ScrapeResult } from "~/types";
+import EventEmitter from "events";
+
+const ee = new EventEmitter();
+
+export const updateJobEvent = (jobId: string, progress: number, maxProgress: number) => {
+  ee.emit(jobId, {
+    progress,
+    maxProgress,
+  });
+};
 
 export const scraperRouter = createTRPCRouter({
 
-  // When we submit a url to scrape, we create the jobId created on the client, then fetch the progress of that jobId
   getProgress: publicProcedure
     .input(z.object({
       jobId: z.string(),
     }))
-    .query(({ input }) => {
+    .subscription(( { input } ) => {
+      type Data = { progress: number; maxProgress: number };
       const { jobId } = input;
 
-      const job = fetchJob(jobId);
-
-      if (!job) {
-        return {
-          progress: 0,
-          maxProgress: 0,
+      return observable<Data>((emit) => {
+        const onAdd = (data: Data) => {
+          // emit data to client
+          emit.next(data);
         };
-      }
-
-      return {
-        progress: job.progress,
-        maxProgress: job.maxProgress,
-      };
+        // trigger `onAdd()` when a new job is added
+        ee.on(jobId, onAdd);
+        // unsubscribe function when client disconnects or stops subscribing
+        return () => {
+          ee.off(jobId, onAdd);
+        };
+      });
     }),
 
   scrapePictoremGallery: publicProcedure
