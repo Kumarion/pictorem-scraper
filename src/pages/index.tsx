@@ -12,20 +12,21 @@ import { BiReset } from "react-icons/bi";
 import formatNumber from "~/helpers/numberHelper";
 import { nanoid } from "nanoid";
 import csv from "csvtojson";
-import Pusher from "pusher-js";
-import { env } from "~/env.mjs";
+// import Pusher from "pusher-js";
+// import { env } from "~/env.mjs";
 
 import type { SubmitHandler } from "react-hook-form";
 import type { RouterOutputs } from "~/utils/api";
 import type { NextPage } from "next";
+import type { ScrapeResult } from "~/types";
 type SubmitProperties = {
   url: string;
 };
-type ExportedData = RouterOutputs["scraper"]["scrapePictoremGallery"];
+type ExportedData = RouterOutputs["scraper"]["fetchDataForPages"]["data"];
 
-const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-  cluster: "us2",
-});
+// const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+//   cluster: "us2",
+// });
 
 function descriptionFixer(str: string) {
   // gets rid of all whitespace, and then puts spaces between words
@@ -33,7 +34,7 @@ function descriptionFixer(str: string) {
 }
 
 const exportToCSV  = (d: ExportedData) => {
-  // Transform the data into a format that can be exported to CSV
+//   // Transform the data into a format that can be exported to CSV
   const dataToExport = [] as {
     name: string;
     tagId: string;
@@ -55,7 +56,7 @@ const exportToCSV  = (d: ExportedData) => {
   // }
 
   // imageUrl is a string with all images separated by a comma
-  for (const { name, tagId, images, link, description } of d.data) {
+  for (const { name, tagId, images, link, description } of d) {
     // make sure its in the same order as this (name, description, tagId, imageUrl, product_link)
     const row = {
       name,
@@ -88,13 +89,15 @@ const exportToCSV  = (d: ExportedData) => {
   // Generate and download the CSV file
   csvExporter.generateCsv(dataToExport);
 };
+
 const getTotalImages = (data: ExportedData) => {
   let total = 0;
-  for (const { images } of data.data) {
+  for (const { images } of data) {
     total += images.length;
   }
   return total;
 };
+
 const getFileSize = (totalImages: number) => {
   // could be KB, MB, GB
   const size = totalImages * 0.5;
@@ -106,6 +109,7 @@ const getFileSize = (totalImages: number) => {
   }
   return `${(size / 1000000).toFixed(2)} GB`;
 };
+
 const secondsToHms = (d: number) => {
   if (d < 60) {
     return `${d} seconds`;
@@ -119,9 +123,13 @@ const secondsToHms = (d: number) => {
     return `${Math.floor(d / 3600)} hours`;
   }
 };
+
 const generateJobId = () => {
   return nanoid(15);
 };
+
+type scrapedNamesAndUrls = RouterOutputs["scraper"]["fetchNamesAndUrlsForPage"]["namesAndUrls"];
+type dataToScrape = ScrapeResult;
 
 const Home: NextPage = () => {
   const [url, setUrl] = useState<string>("");
@@ -131,20 +139,100 @@ const Home: NextPage = () => {
   const [progress, setProgress] = useState<number>(0);
   const [maxProgress, setMaxProgress] = useState<number>(0);
   const [jobId, setJobId] = useState<string>("");
-  const [data, setData] = useState<ExportedData>({
-    data: [],
-    pages: 0,
+  const [pagesDone, setPagesDone] = useState<boolean>(false);
+  const [scraping, setScraping] = useState<boolean>(false);
+
+  const [currentPage, setCurrentPage] = useState<number>(0);
+
+  // this will be the pages that are scraped in a state
+  const [pagesGot, setPagesGot] = useState<string[]>([]);
+  const {  } = api.scraper.fetchPages.useQuery({url: url}, {
+    enabled: scraping && !pagesDone,
+    onSuccess: (data) => {
+      // set the pages to the data
+      // so we now have the pages that we need to scrape for products
+      setPagesGot(data);
+      setPagesDone(true);
+    },
+    onError: (err) => {
+      // if there is an error, then we are done
+      console.log("Error", err);
+      setScraping(false);
+    },
+  });
+
+  // this will be the names and urls returned from each page
+  const [namesAndUrlsGot, setNamesAndUrlsGot] = useState<scrapedNamesAndUrls>([]);
+  const [namesAndUrlsDone, setNamesAndUrlsDone] = useState<boolean>(false);
+  const {  } = api.scraper.fetchNamesAndUrlsForPage.useQuery({
+    pageUrl: pagesGot[currentPage] as string,
+    currentPage,
+  }, {
+    enabled: pagesDone && !namesAndUrlsDone,
+    onSuccess: (data) => {
+      // set the names and urls to the data
+      // append to the names and urls
+      setNamesAndUrlsGot(
+        namesAndUrlsGot.concat(data.namesAndUrls)
+      );
+
+      if (data.nextPage >= pagesGot.length) {
+        // we are done
+        setNamesAndUrlsDone(true);
+        return;
+      }
+
+      setCurrentPage(data.nextPage);
+    },
+  });
+  
+  // we will batch up the namesAndUrlsGot into 10 and send it to the server in batches
+  // this will be the names and urls that are sent to the server
+  const [dataGot, setDataGot] = useState<dataToScrape[]>([]);
+  const [dataGotDone, setDataGotDone] = useState<boolean>(false);
+  const [currentDataPage, setCurrentDataPage] = useState<number>(0);
+  const {  } = api.scraper.fetchDataForPages.useQuery({
+    urls: namesAndUrlsGot.slice(currentDataPage * 10, (currentDataPage + 1) * 10).map((item) => {
+      return item;
+    }),
+    currentDataPage,
+  }, {
+    enabled: namesAndUrlsDone && !dataGotDone,
+    onSuccess: (data) => {
+      // set the names and urls to the data
+      // append to the names and urls
+      setDataGot(
+        dataGot.concat(data.data)
+      );
+
+      console.log(dataGot);
+      console.log(dataGot.length, data.nextPage);
+
+      // if its the last page, then we are done
+      // there wlil be X namesAndUrlsGot and there will be roughly 10 dataGot per page
+      // we need to 
+      const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 10);
+
+      // we expect X pages to be scraped, so if the next page is greater than that, then we are done
+      if (data.nextPage >= totalExpectedPages) {
+        setTimeTook((Date.now() - startTime) / 1000);
+        toast("Scraping completed", "success");
+        setDataGotDone(true);
+        setScraping(false);
+        return;
+      }
+
+      setCurrentDataPage(data.nextPage);
+    },
   });
 
   // use scraper query
-  const { isLoading: scrapePending, mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
-    onSuccess: (data) => {
-      setData(data);
-      setUrl("");
-      setValue("url", "");
+  const { mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
+    onSuccess: () => {
       // get the time it took in seconds
-      setTimeTook((Date.now() - startTime) / 1000);
-      toast("Scraping completed", "success");
+      // setTimeTook((Date.now() - startTime) / 1000);
+      setScraping(true);
+      // toast("Scraping completed", "success");
     },
     onError: (error) => {
       if (error instanceof Error) {
@@ -156,11 +244,11 @@ const Home: NextPage = () => {
   });
   
   // this is for retrieving the progress on the server
-  const channel = pusher.subscribe(jobId);
-  channel.bind("jobProgress", (data: {progress: number, maxProgress: number}) => {
-    setProgress(data.progress);
-    setMaxProgress(data.maxProgress);
-  });
+  // const channel = pusher.subscribe(jobId);
+  // channel.bind("jobProgress", (data: {progress: number, maxProgress: number}) => {
+  //   setProgress(data.progress);
+  //   setMaxProgress(data.maxProgress);
+  // });
 
   const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {
@@ -176,10 +264,17 @@ const Home: NextPage = () => {
   };
   const reset = () => {
     setUrl("");
-    setData({
-      data: [],
-      pages: 0,
-    });
+    setJsonData("");
+    setPagesGot([]);
+    setPagesDone(false);
+    setNamesAndUrlsGot([]);
+    setNamesAndUrlsDone(false);
+    setDataGot([]);
+    setDataGotDone(false);
+    setCurrentDataPage(0);
+    setCurrentPage(0);
+    setScraping(false);
+    setJobId("");
     setValue("url", "");
     setError("url", { type: "manual", message: "" });
     setProgress(0);
@@ -293,15 +388,15 @@ const Home: NextPage = () => {
                 >
                   <button
                     type="submit"
-                    className={`btn btn-primary btn-lg` + `${scrapePending && url != "" ? " loading" : ""}`}
-                    disabled={scrapePending}
+                    className={`btn btn-primary btn-lg` + `${scraping && url != "" ? " loading" : ""}`}
+                    disabled={scraping}
                   >
-                    {!scrapePending && 
+                    {!scraping && 
                     <FaGitkraken 
                       fontSize={25} 
                       className="mr-2" 
                     />}
-                    {scrapePending && url != "" ? "Working..." : "Scrape"}
+                    {scraping && url != "" ? "Working..." : "Scrape"}
                   </button>
                 </motion.div>
                 
@@ -327,32 +422,33 @@ const Home: NextPage = () => {
             </form>
 
             {/* Final result to download csv */}
-            {data && data.data.length > 0 && (
+            {dataGot && dataGot.length > 0 && (
               <div className="flex flex-col items-center gap-3 mt-16">
                 <div className="flex flex-col items-center gap-2">
                   <p className="text-lg font-medium text-white">
-                    {`Total items scraped: ${formatNumber(data.data.length)}`}
+                    {`Total items scraped: ${formatNumber(dataGot.length)}`}
                   </p>
                   <p className="text-lg font-medium text-white">
-                    {`Total images scraped: ${formatNumber(getTotalImages(data))}`} 
+                    {`Total images scraped: ${formatNumber(getTotalImages(dataGot))}`} 
                   </p>
                   <p>
-                    {`File size: ${getFileSize(getTotalImages(data))}`}
+                    {`File size: ${getFileSize(getTotalImages(dataGot))}`}
                   </p>
                   <p>
-                    Scraped {data.pages} page{data.pages > 1 ? "s" : ""}, operation took {secondsToHms(timeTook)}.
+                    {/* Scraped {dataGot.pages} page{dataGot.pages > 1 ? "s" : ""}, operation took {secondsToHms(timeTook)}. */}
+                    Scraping {pagesGot.length} page{pagesGot.length > 1 ? "s" : ""}, operation took {timeTook == 0 ? "(in progress)" : secondsToHms(timeTook)}.
                   </p>
                 </div>
 
                 <button
-                  onClick={() => exportToCSV(data)}
+                  onClick={() => exportToCSV(dataGot)}
                   className="btn btn-primary btn-lg mt-3 animate-pulse"
                 >
                   <BsCloudDownloadFill className="inline-block w-5 h-5 mr-2" />
                   Download your CSV file
                 </button>
               </div>
-            )}            
+            )}
           </div>
         </div>
 

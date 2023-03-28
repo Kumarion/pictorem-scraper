@@ -26,7 +26,7 @@ const updateJob = (jobId: string, progress: number, maxProgress: number) => {
   });
 
   // emit the event to the client
-  updateJobEvent(jobId, progress, maxProgress);
+  // updateJobEvent(jobId, progress, maxProgress);
 };
 
 const deleteJob = (jobId: string) => {

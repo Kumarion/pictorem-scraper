@@ -8,6 +8,7 @@ async function getAllPagesWithUrlsAndNames(baseUrl: string) {
   // get the first page
   const startData = await getNamesAndUrls(baseUrl);
   const validUrlsWithNames = [] as { name: string; url: string }[];
+  const validUrls = [] as string[];
   
   // if it fails, we dont want to continue
   if (startData.length === 0) {
@@ -16,6 +17,9 @@ async function getAllPagesWithUrlsAndNames(baseUrl: string) {
       message: "Failed to get the first page",
     });
   }
+
+  // append the first page to the validUrls
+  validUrls.push(baseUrl);
     
   let maxNumber = 10;
   const startingNumber = 2;
@@ -51,6 +55,9 @@ async function getAllPagesWithUrlsAndNames(baseUrl: string) {
         url: el.url,
       });
     });
+
+    // add the url to the additional pages
+    validUrls.push(url);
   
     // increment the maxNumber
     maxNumber++;
@@ -59,6 +66,7 @@ async function getAllPagesWithUrlsAndNames(baseUrl: string) {
   
   return {
     allPagesWithUrlsAndNames: validUrlsWithNames,
+    validUrls,
     pagesIterated,
   };
 }

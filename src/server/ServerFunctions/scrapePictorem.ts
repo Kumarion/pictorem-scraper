@@ -25,42 +25,43 @@ async function scrapePictorem(url: string, jobId: string) {
   // const namesAndUrlsBeforeValidation = await getNamesAndUrls(urls);
   
   // one more validation removing duplicates
-  const namesAndUrls = allPagesWithUrlsAndNames.filter((thing, index, self) =>
-    index === self.findIndex((t) => (
-      t.name === thing.name && t.url === thing.url
-    ))
-  );
+  // const namesAndUrls = allPagesWithUrlsAndNames.filter((thing, index, self) =>
+  //   index === self.findIndex((t) => (
+  //     t.name === thing.name && t.url === thing.url
+  //   ))
+  // );
   
   // make sure theres only one, just for testing
   // const namesAndUrls2 = namesAndUrls.slice(0, 1);
   // console.log("Names and urls: ", namesAndUrls);
   
-  console.log("Getting data from product pages...");
-  const data = await getDataFromProductPage(namesAndUrls, jobId);
-  if (data.length === 0) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "No data found, or there is no data to scrape",
-    });
-  }
+  // console.log("Getting data from product pages...");
+  // const data = await getDataFromProductPage(namesAndUrls, jobId);
+  // if (data.length === 0) {
+  //   throw new TRPCError({
+  //     code: "NOT_FOUND",
+  //     message: "No data found, or there is no data to scrape",
+  //   });
+  // }
   
   console.log("Successfully scraped data from all urls");
   // console.log("Data from all urls: ", data);
   
   // report any with 4 or less images
   // tuscany house reported less than 0, but it seems to be a bug with the website, or the images the uploader uploaded
-  if (data) {
-    data.map((d) => {
-      if (d.images.length <= 4) {
-        console.log("Product with less than 4 images: ", d.name, d.link);
-      }
-    });
-  }
+  // if (data) {
+  //   data.map((d) => {
+  //     if (d.images.length <= 4) {
+  //       console.log("Product with less than 4 images: ", d.name, d.link);
+  //     }
+  //   });
+  // }
   
   console.log("Done. Performed all checks.");
   
   return {
-    data,
+    // data,
+    data: [],
     pages: pagesIterated,
   };
 }
