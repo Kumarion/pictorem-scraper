@@ -252,6 +252,9 @@ const Home: NextPage = () => {
 
   const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {
+    // reset the state
+    reset();
+
     // start the timer
     const start = Date.now();
     setStartTime(start);
@@ -274,6 +277,7 @@ const Home: NextPage = () => {
     setCurrentDataPage(0);
     setCurrentPage(0);
     setScraping(false);
+    setStartTime(0);
     setJobId("");
     setValue("url", "");
     setError("url", { type: "manual", message: "" });
