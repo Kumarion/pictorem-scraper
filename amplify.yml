@@ -1,0 +1,20 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - env | grep -e DATABASE_URL -e NEXTAUTH_SECRET -e NEXTAUTH_URL >> .env.production
+        - env | grep -e DISCORD_CLIENT_SECRET >> .env.production
+        - env | grep -e DISCORD_CLIENT_ID >> .env.production
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
