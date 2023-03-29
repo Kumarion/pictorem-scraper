@@ -1,5 +1,5 @@
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { ToastContainer } from "react-toastify";
 import toast from "~/helpers/toast";
@@ -12,8 +12,8 @@ import { BiReset } from "react-icons/bi";
 import formatNumber from "~/helpers/numberHelper";
 import { nanoid } from "nanoid";
 import csv from "csvtojson";
-// import Pusher from "pusher-js";
-// import { env } from "~/env.mjs";
+import Pusher from "pusher-js";
+import { env } from "~/env.mjs";
 
 import type { SubmitHandler } from "react-hook-form";
 import type { RouterOutputs } from "~/utils/api";
@@ -25,9 +25,10 @@ type SubmitProperties = {
 };
 type ExportedData = RouterOutputs["scraper"]["fetchDataForPages"]["data"];
 
-// const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-//   cluster: "us2",
-// });
+let subscribed = false;
+const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+  cluster: "us2",
+});
 
 function descriptionFixer(str: string) {
   // gets rid of all whitespace, and then puts spaces between words
@@ -135,6 +136,8 @@ type dataToScrape = ScrapeResult;
 const Home: NextPage = () => {
   const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<SubmitProperties>();
 
+  const [consoleMessages, setConsoleMessages] = useState<string[]>([]);
+
   const [url, setUrl] = useState<string>("");
   const [startTime, setStartTime] = useState<number>(0);
   const [timeTook, setTimeTook] = useState<number>(0);
@@ -144,6 +147,17 @@ const Home: NextPage = () => {
   const [jobId, setJobId] = useState<string>("");
   const [pagesDone, setPagesDone] = useState<boolean>(false);
   const [scraping, setScraping] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!subscribed && jobId) {
+      const channel = pusher.subscribe(jobId);
+      subscribed = true;
+      channel.bind("job-console", ({ message }: {message: string}) => {
+        // append message (no duplicates)
+        setConsoleMessages((messages) => [...messages, message]);
+      });
+    }
+  }, [jobId]);
 
   // use scraper query
   const { mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
@@ -219,6 +233,7 @@ const Home: NextPage = () => {
       return item;
     }),
     currentDataPage,
+    jobId,
   }, {
     enabled: namesAndUrlsDone && !dataGotDone,
     onSuccess: (data) => {
@@ -302,6 +317,18 @@ const Home: NextPage = () => {
     const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 10);
     return `${currentDataPage + 1} / ${totalExpectedPages}`;
   };
+
+  const consoleRef = useRef() as React.MutableRefObject<HTMLPreElement>;
+
+  useEffect(() => {
+    if (!consoleRef.current) return;
+
+    const timer = setTimeout(() => {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [consoleMessages]);
 
   return (
     <>
@@ -392,7 +419,7 @@ const Home: NextPage = () => {
                   <input 
                     type="range" 
                     min="1" 
-                    max="100" 
+                    max="50" 
                     defaultValue={1}
                     {...register("pages", {
                       required: true,
@@ -453,7 +480,34 @@ const Home: NextPage = () => {
 
             {/* Final result to download csv */}
             {dataGot && dataGot.length > 0 && (
-              <div className="flex flex-col items-center gap-6 mt-16">
+              <div className="flex flex-col items-center gap-6 mt-16 w-full">
+                <div 
+                  className="flex mockup-code rounded-lg bg-base-200 text-primary-content max-w-5xl w-full"
+                >
+                  <div className="mt-6 w-full">
+                    <pre 
+                      className="text-gray-500 pt-7 h-screen overflow-y-visible overflow-x-hidden"
+                      ref={consoleRef}
+                    >
+                      <code className="text-sm">
+                        {consoleMessages.map((message, index) => {
+                          return (
+                            <pre 
+                              key={index}
+                              data-prefix=">" 
+                              className="text-success"
+                            >
+                              <code>
+                                {message}
+                              </code>
+                            </pre> 
+                          );
+                        })}
+                      </code>
+                    </pre> 
+                  </div>
+                </div>
+
                 <div className="flex flex-col items-center gap-2">
                   <p>
                     Current batch of page scraping: {getCurrentPageScraping()}

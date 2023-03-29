@@ -8,7 +8,7 @@ import {
 import { createJob, deleteJob } from "~/server/ServerFunctions/jobsHandler";
 
 // import type { ScrapeResult } from "~/types";
-import { jobPusher } from "~/utils/pusher";
+// import { jobPusher } from "~/utils/pusher";
 import getAllPagesWithUrlsAndNames from "~/server/ServerFunctions/getAllPagesWithUrlsAndNames";
 import getNamesAndUrls from "~/server/ServerFunctions/getNamesAndUrls";
 import getDataFromProductPage from "~/server/ServerFunctions/getDataFromProductPage";
@@ -21,12 +21,12 @@ export const updateJobEvent = (jobId: string, progress: number, maxProgress: num
     return;
   }
 
-  jobPusher.trigger(jobId, "jobProgress", {
-    progress,
-    maxProgress,
-  }).then(() => {
-    console.log("Pusher event sent.");
-  }).catch(console.error);
+  // jobPusher.trigger(jobId, "jobProgress", {
+  //   progress,
+  //   maxProgress,
+  // }).then(() => {
+  //   console.log("Pusher event sent.");
+  // }).catch(console.error);
 };
 
 export const scraperRouter = createTRPCRouter({
@@ -88,15 +88,15 @@ export const scraperRouter = createTRPCRouter({
       urls: z.object({
         url: z.string().url(),
         name: z.string(),
-      }).array(),
+      }).array().min(1).max(50),
       currentDataPage: z.number(),
-      // jobId: z.string(),
+      jobId: z.string(),
     }))
     // .query(async ({ input }) => {
     .query(async ({ input }) => {
-      const { urls, currentDataPage } = input;
+      const { urls, currentDataPage, jobId } = input;
       
-      const data = await getDataFromProductPage(urls, "");
+      const data = await getDataFromProductPage(urls, jobId);
     
       return {
         data,

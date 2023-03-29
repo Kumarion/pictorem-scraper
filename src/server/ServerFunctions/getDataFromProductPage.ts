@@ -3,6 +3,7 @@ import { load } from "cheerio";
 import { updateJob } from "./jobsHandler";
 
 import type { ScrapeResult } from "~/types";
+import SendJobConsoleMessage from "./scrapeJobConsole";
 
 async function getDataFromProductPage(urls: { name: string; url: string }[], jobId: string) {
   // Loop through the urls and get the data via scraping
@@ -20,6 +21,7 @@ async function getDataFromProductPage(urls: { name: string; url: string }[], job
           .then((res) => res.text())
           .then((body) => {
             console.log("[getting page data] Retreived body for: ", urlResolving.url);
+            SendJobConsoleMessage(jobId, `[Getting page data] Retreived body for: ${urlResolving.url}`);
             const $ = load(body);
             const container = $(".container");
             const row = $(container).find(".row");
@@ -122,7 +124,6 @@ async function getDataFromProductPage(urls: { name: string; url: string }[], job
     
             // remove anything after html, some urls have spaces too, so lets be safe and remove everything after .html
             const newUrl = urlResolving.url.split(".html")[0] as string;
-            console.log(newUrl);
     
             // append the special image to the images array
             if (specialImage !== "") {
@@ -140,9 +141,11 @@ async function getDataFromProductPage(urls: { name: string; url: string }[], job
     
             resolve(data);
             console.log("[getting page data] Resolved data for: ", urlResolving.url);
+            SendJobConsoleMessage(jobId, `[Getting page data] Resolved data for: ${urlResolving.url}`);
             
             promisesResolved += 1;
             console.log(`Promises resolved: ${promisesResolved}. Urls left: ${urls.length - promisesResolved}`);
+            // SendJobConsoleMessage(jobId, `Promises resolved: ${promisesResolved}. Urls left: ${urls.length - promisesResolved}`);
 
             // update the job with the new progress, and max progress
             updateJob(jobId, promisesResolved, urls.length);

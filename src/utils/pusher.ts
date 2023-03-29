@@ -1,7 +1,7 @@
 import pusher from "pusher";
 import { env } from "~/env.mjs";
 
-const jobPusher = new pusher({
+const consolePusher = new pusher({
   appId: env.PUSHER_APP_ID,
   key: env.NEXT_PUBLIC_PUSHER_APP_KEY,
   secret: env.PUSHER_SECRET,
@@ -9,4 +9,4 @@ const jobPusher = new pusher({
   useTLS: true,
 });
 
-export { jobPusher };
+export { consolePusher };
