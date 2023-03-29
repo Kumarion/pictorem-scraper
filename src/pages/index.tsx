@@ -444,13 +444,15 @@ const Home: NextPage = () => {
                   </p>
                 </div>
 
-                <button
-                  onClick={() => exportToCSV(dataGot)}
-                  className="btn btn-primary btn-lg mt-3 animate-pulse"
-                >
-                  <BsCloudDownloadFill className="inline-block w-5 h-5 mr-2" />
-                  Download your CSV file
-                </button>
+                {dataGotDone && (
+                  <button
+                    onClick={() => exportToCSV(dataGot)}
+                    className="btn btn-primary btn-lg mt-3 animate-pulse"
+                  >
+                    <BsCloudDownloadFill className="inline-block w-5 h-5 mr-2" />
+                    Download your CSV file
+                  </button>
+                )}
               </div>
             )}
           </div>
