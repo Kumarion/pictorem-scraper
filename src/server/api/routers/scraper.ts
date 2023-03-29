@@ -33,13 +33,17 @@ export const scraperRouter = createTRPCRouter({
   fetchPages: publicProcedure
     .input(z.object({
       url: z.string().url(),
+      currentPage: z.number(),
     }))
     .query(async ({ input }) => {
-      const { url } = input;
+      const { url, currentPage } = input;
 
       // if the url includes ?records=1, ?records=2, etc, then we need to just scrape that page
       if (url.includes("?records=")) {
-        return [url];
+        return {
+          pages: [url],
+          nextPage: currentPage + 1,
+        };
       }
 
       // this will the pages to scrape
@@ -48,7 +52,10 @@ export const scraperRouter = createTRPCRouter({
       // so now we have all the additional pages (not including the base url)
       // we need to add the base url to the array
       console.log("Urls: ", validUrls);
-      return validUrls;
+      return {
+        pages: validUrls,
+        nextPage: currentPage + 1,
+      };
 
       // client now has an idea on the pages it'll need to scrape for the next step
       // the next step being scraping for products (usually 50-70 a page) (so we do one page per request so we dont get a timeout)

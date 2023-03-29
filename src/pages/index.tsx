@@ -21,6 +21,7 @@ import type { NextPage } from "next";
 import type { ScrapeResult } from "~/types";
 type SubmitProperties = {
   url: string;
+  pages: number;
 };
 type ExportedData = RouterOutputs["scraper"]["fetchDataForPages"]["data"];
 
@@ -132,6 +133,8 @@ type scrapedNamesAndUrls = RouterOutputs["scraper"]["fetchNamesAndUrlsForPage"][
 type dataToScrape = ScrapeResult;
 
 const Home: NextPage = () => {
+  const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<SubmitProperties>();
+
   const [url, setUrl] = useState<string>("");
   const [startTime, setStartTime] = useState<number>(0);
   const [timeTook, setTimeTook] = useState<number>(0);
@@ -142,31 +145,17 @@ const Home: NextPage = () => {
   const [pagesDone, setPagesDone] = useState<boolean>(false);
   const [scraping, setScraping] = useState<boolean>(false);
 
-  const [currentPage, setCurrentPage] = useState<number>(0);
-
   // this will be the pages that are scraped in a state
   const [pagesGot, setPagesGot] = useState<string[]>([]);
-  const {  } = api.scraper.fetchPages.useQuery({url: url}, {
-    enabled: scraping && !pagesDone,
-    onSuccess: (data) => {
-      // set the pages to the data
-      // so we now have the pages that we need to scrape for products
-      setPagesGot(data);
-      setPagesDone(true);
-    },
-    onError: (err) => {
-      // if there is an error, then we are done
-      console.log("Error", err);
-      setScraping(false);
-    },
-  });
+
 
   // this will be the names and urls returned from each page
   const [namesAndUrlsGot, setNamesAndUrlsGot] = useState<scrapedNamesAndUrls>([]);
   const [namesAndUrlsDone, setNamesAndUrlsDone] = useState<boolean>(false);
+  const [currentNamesAndUrlsPage, setCurrentNamesAndUrlsPage] = useState<number>(0);
   const {  } = api.scraper.fetchNamesAndUrlsForPage.useQuery({
-    pageUrl: pagesGot[currentPage] as string,
-    currentPage,
+    pageUrl: pagesGot[currentNamesAndUrlsPage] as string,
+    currentPage: currentNamesAndUrlsPage,
   }, {
     enabled: pagesDone && !namesAndUrlsDone,
     onSuccess: (data) => {
@@ -182,7 +171,7 @@ const Home: NextPage = () => {
         return;
       }
 
-      setCurrentPage(data.nextPage);
+      setCurrentNamesAndUrlsPage(data.nextPage);
     },
   });
   
@@ -225,7 +214,6 @@ const Home: NextPage = () => {
       setCurrentDataPage(data.nextPage);
     },
   });
-
   // use scraper query
   const { mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
     onSuccess: () => {
@@ -242,15 +230,7 @@ const Home: NextPage = () => {
       }
     }
   });
-  
-  // this is for retrieving the progress on the server
-  // const channel = pusher.subscribe(jobId);
-  // channel.bind("jobProgress", (data: {progress: number, maxProgress: number}) => {
-  //   setProgress(data.progress);
-  //   setMaxProgress(data.maxProgress);
-  // });
 
-  const { register, handleSubmit, setValue, setError, formState: { errors } } = useForm<SubmitProperties>();
   const submit: SubmitHandler<SubmitProperties> = (data) => {
     // reset the state
     reset();
@@ -259,6 +239,22 @@ const Home: NextPage = () => {
     const start = Date.now();
     setStartTime(start);
     setUrl(data.url);
+
+    // formulate all the links and pages to scrape so the server knows where to get the products from
+    if (!data.url.includes("?records=")) {
+      // If a records query is present in the url, just use that
+      // otherwise, we will generate the pages
+      for (let i = 1; i <= data.pages; i++) {
+        const pageUrl = `${data.url}?records=${i}`;
+        setPagesGot((pagesGot) => [...pagesGot, pageUrl]);
+      }
+    } else {
+      // just add the url to the pages
+      setPagesGot((pagesGot) => [...pagesGot, data.url]);
+    }
+
+    // we are done with the pages
+    setPagesDone(true);
 
     const generatedId = generateJobId();
     const generatedJobId = `${generatedId}`;
@@ -275,9 +271,10 @@ const Home: NextPage = () => {
     setDataGot([]);
     setDataGotDone(false);
     setCurrentDataPage(0);
-    setCurrentPage(0);
+    setCurrentNamesAndUrlsPage(0);
     setScraping(false);
     setStartTime(0);
+    setValue("pages", 1);
     setTimeTook(0);
     setJobId("");
     setValue("url", "");
@@ -377,6 +374,27 @@ const Home: NextPage = () => {
                   })}
                   className="input input-bordsered w-full max-w-xl" 
                 />
+
+                <div className="flex flex-col items-center mt-5 gap-2 w-1/4">
+                  <label
+                    htmlFor="url"
+                    className="block text-sm text-center font-medium text-white"
+                  >
+                    Pages to scrape: {watch("pages") || 1} (leave at 1 if you just want to scrape a certain page)
+                  </label>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="100" 
+                    defaultValue={1}
+                    {...register("pages", {
+                      required: true,
+                      value: 1,
+                      min: 1,
+                    })}
+                    className="range range-success" 
+                  />
+                </div>
               </div>
 
               {progress > 0 &&
@@ -441,7 +459,7 @@ const Home: NextPage = () => {
                   </p>
                   <p>
                     {/* Scraped {dataGot.pages} page{dataGot.pages > 1 ? "s" : ""}, operation took {secondsToHms(timeTook)}. */}
-                    Scraping {pagesGot.length} page{pagesGot.length > 1 ? "s" : ""}, operation took {timeTook == 0 ? "(in progress)" : secondsToHms(timeTook)}.
+                    {dataGotDone ? "Scraped" : "Scraping"} {pagesGot.length} page{pagesGot.length > 1 ? "s" : ""}, operation took {timeTook == 0 ? "(in progress)" : secondsToHms(timeTook)}.
                   </p>
                 </div>
 
