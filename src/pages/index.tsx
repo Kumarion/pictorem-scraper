@@ -145,6 +145,40 @@ const Home: NextPage = () => {
   const [pagesDone, setPagesDone] = useState<boolean>(false);
   const [scraping, setScraping] = useState<boolean>(false);
 
+  // use scraper query
+  const { mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
+    onSuccess: (data) => {
+      // get the time it took in seconds
+      // setTimeTook((Date.now() - startTime) / 1000);
+      setScraping(true);
+
+      // formulate all the links and pages to scrape so the server knows where to get the products from
+      if (!data.url.includes("?records=")) {
+        // If a records query is present in the url, just use that
+        // otherwise, we will generate the pages
+        for (let i = 1; i <= parseInt(data.pages); i++) {
+          const pageUrl = `${data.url}?records=${i}`;
+          setPagesGot((pagesGot) => [...pagesGot, pageUrl]);
+        }
+      } else {
+        // just add the url to the pages
+        setPagesGot((pagesGot) => [...pagesGot, data.url]);
+      }
+
+      // we are done with the pages
+      setPagesDone(true);
+
+      // toast("Scraping completed", "success");
+    },
+    onError: (error) => {
+      if (error instanceof Error) {
+        toast(error.message, "error");
+        setUrl("");
+        setValue("url", "");
+      }
+    }
+  });
+
   // this will be the pages that are scraped in a state
   const [pagesGot, setPagesGot] = useState<string[]>([]);
 
@@ -214,22 +248,6 @@ const Home: NextPage = () => {
       setCurrentDataPage(data.nextPage);
     },
   });
-  // use scraper query
-  const { mutate: scrape } = api.scraper.scrapePictoremGallery.useMutation({
-    onSuccess: () => {
-      // get the time it took in seconds
-      // setTimeTook((Date.now() - startTime) / 1000);
-      setScraping(true);
-      // toast("Scraping completed", "success");
-    },
-    onError: (error) => {
-      if (error instanceof Error) {
-        toast(error.message, "error");
-        setUrl("");
-        setValue("url", "");
-      }
-    }
-  });
 
   const submit: SubmitHandler<SubmitProperties> = (data) => {
     // reset the state
@@ -240,26 +258,10 @@ const Home: NextPage = () => {
     setStartTime(start);
     setUrl(data.url);
 
-    // formulate all the links and pages to scrape so the server knows where to get the products from
-    if (!data.url.includes("?records=")) {
-      // If a records query is present in the url, just use that
-      // otherwise, we will generate the pages
-      for (let i = 1; i <= data.pages; i++) {
-        const pageUrl = `${data.url}?records=${i}`;
-        setPagesGot((pagesGot) => [...pagesGot, pageUrl]);
-      }
-    } else {
-      // just add the url to the pages
-      setPagesGot((pagesGot) => [...pagesGot, data.url]);
-    }
-
-    // we are done with the pages
-    setPagesDone(true);
-
     const generatedId = generateJobId();
     const generatedJobId = `${generatedId}`;
     setJobId(generatedJobId);
-    scrape({url: data.url, jobId: generatedJobId});
+    scrape({url: data.url, jobId: generatedJobId, pages: data.pages.toString()});
   };
   const reset = () => {
     setUrl("");

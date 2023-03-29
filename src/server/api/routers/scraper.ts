@@ -109,9 +109,10 @@ export const scraperRouter = createTRPCRouter({
     .input(z.object({ 
       url: z.string().url(),
       jobId: z.string(),
+      pages: z.string(),
     }))
     .mutation(({ input }) => {
-      const { url, jobId } = input;
+      const { url, jobId, pages } = input;
 
       console.log("Creating job.");
       createJob(url, jobId);
@@ -123,7 +124,10 @@ export const scraperRouter = createTRPCRouter({
       deleteJob(jobId);
 
       // return the data and pages
-      return true;
+      return {
+        url,
+        pages,
+      };
       // return {
       //   data,
       //   pages,
