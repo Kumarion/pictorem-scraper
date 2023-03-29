@@ -278,6 +278,7 @@ const Home: NextPage = () => {
     setCurrentPage(0);
     setScraping(false);
     setStartTime(0);
+    setTimeTook(0);
     setJobId("");
     setValue("url", "");
     setError("url", { type: "manual", message: "" });
@@ -458,7 +459,7 @@ const Home: NextPage = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-4 mb-10 mt-14">
+        <div className="flex flex-col items-center gap-4 mb-10 mt-8">
           <span 
             className="text-white text-center"
           >
