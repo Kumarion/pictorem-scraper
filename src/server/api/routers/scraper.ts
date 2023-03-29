@@ -114,11 +114,9 @@ export const scraperRouter = createTRPCRouter({
     .mutation(({ input }) => {
       const { url, jobId, pages } = input;
 
+      // Create job
       console.log("Creating job.");
       createJob(url, jobId);
-
-      // console.log("Starting scraping process.");
-      // const { data, pages } = await scrapePictorem(url, jobId);
 
       // remove job from jobs list
       deleteJob(jobId);
@@ -128,12 +126,5 @@ export const scraperRouter = createTRPCRouter({
         url,
         pages,
       };
-      // return {
-      //   data,
-      //   pages,
-      // } as {
-      //   data: ScrapeResult[];
-      //   pages: number;
-      // };
     }),
 });

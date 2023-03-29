@@ -215,7 +215,7 @@ const Home: NextPage = () => {
   const [dataGotDone, setDataGotDone] = useState<boolean>(false);
   const [currentDataPage, setCurrentDataPage] = useState<number>(0);
   const {  } = api.scraper.fetchDataForPages.useQuery({
-    urls: namesAndUrlsGot.slice(currentDataPage * 20, (currentDataPage + 1) * 20).map((item) => {
+    urls: namesAndUrlsGot.slice(currentDataPage * 10, (currentDataPage + 1) * 10).map((item) => {
       return item;
     }),
     currentDataPage,
@@ -234,7 +234,7 @@ const Home: NextPage = () => {
       // if its the last page, then we are done
       // there wlil be X namesAndUrlsGot and there will be roughly 10 dataGot per page
       // we need to 
-      const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 20);
+      const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 10);
 
       // we expect X pages to be scraped, so if the next page is greater than that, then we are done
       if (data.nextPage >= totalExpectedPages) {
@@ -299,7 +299,7 @@ const Home: NextPage = () => {
   };
   const getCurrentPageScraping = () => {
     // get total amount of pages, then get the current page based on the currentDataPage
-    const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 20);
+    const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 10);
     return `${currentDataPage + 1} / ${totalExpectedPages}`;
   };
 
@@ -461,7 +461,7 @@ const Home: NextPage = () => {
                   <progress 
                     className="progress progress-success w-56" 
                     value={currentDataPage + 1}
-                    max={Math.ceil(namesAndUrlsGot.length / 20)}
+                    max={Math.ceil(namesAndUrlsGot.length / 10)}
                   ></progress>
                 </div>
 
