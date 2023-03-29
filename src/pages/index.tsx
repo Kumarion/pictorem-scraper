@@ -295,6 +295,11 @@ const Home: NextPage = () => {
       reader.readAsText(file as Blob);
     }
   };
+  const getCurrentPageScraping = () => {
+    // get total amount of pages, then get the current page based on the currentDataPage
+    const totalExpectedPages = Math.ceil(namesAndUrlsGot.length / 20);
+    return `${currentDataPage + 1} / ${totalExpectedPages}`;
+  };
 
   return (
     <>
@@ -446,8 +451,19 @@ const Home: NextPage = () => {
 
             {/* Final result to download csv */}
             {dataGot && dataGot.length > 0 && (
-              <div className="flex flex-col items-center gap-3 mt-16">
+              <div className="flex flex-col items-center gap-6 mt-16">
                 <div className="flex flex-col items-center gap-2">
+                  <p>
+                    Current batch of page scraping: {getCurrentPageScraping()}
+                  </p>
+                  <progress 
+                    className="progress progress-success w-56" 
+                    value={currentDataPage + 1}
+                    max={Math.ceil(namesAndUrlsGot.length / 20)}
+                  ></progress>
+                </div>
+
+                <div className="flex flex-col items-center gap-1">
                   <p className="text-lg font-medium text-white">
                     {`Total items scraped: ${formatNumber(dataGot.length)}`}
                   </p>
