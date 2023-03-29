@@ -136,7 +136,10 @@ type dataToScrape = ScrapeResult;
 const Home: NextPage = () => {
   const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<SubmitProperties>();
 
-  const [consoleMessages, setConsoleMessages] = useState<string[]>([]);
+  const [consoleMessages, setConsoleMessages] = useState<{
+    message: string;
+    time: Date;
+  }[]>([]);
 
   const [url, setUrl] = useState<string>("");
   const [startTime, setStartTime] = useState<number>(0);
@@ -154,7 +157,12 @@ const Home: NextPage = () => {
       subscribed = true;
       channel.bind("job-console", ({ message }: {message: string}) => {
         // append message (no duplicates)
-        setConsoleMessages((messages) => [...messages, message]);
+        setConsoleMessages((messages) => {
+          if (messages[messages.length - 1]?.message !== message) {
+            return [...messages, { message, time: new Date() }];
+          }
+          return messages;
+        });
       });
     }
   }, [jobId]);
@@ -490,7 +498,8 @@ const Home: NextPage = () => {
                       ref={consoleRef}
                     >
                       <code className="text-sm">
-                        {consoleMessages.map((message, index) => {
+                        {consoleMessages.map((data, index) => {
+                          const { message, time } = data;
                           return (
                             <pre 
                               key={index}
@@ -498,7 +507,7 @@ const Home: NextPage = () => {
                               className="text-success"
                             >
                               <code>
-                                {message}
+                                {time.toLocaleTimeString()}: {message}
                               </code>
                             </pre> 
                           );
